@@ -1,0 +1,98 @@
+﻿<UserControl
+    x:Class="DataCollectionSetup.PromptElement"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:DataCollectionSetup"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="300"
+    d:DesignWidth="400">
+
+    <Border BorderBrush="Black" BorderThickness="1">
+        <Grid Background="LightGray" Padding="10" VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width=".5*"/>      <!-- REMOVE CHECKBOX -->
+                <ColumnDefinition Width=".5*"/>     <!-- POSITION -->
+                <ColumnDefinition Width="2.5*"/>     <!-- IMAGE FILE IMAGE -->
+                <ColumnDefinition Width="2*"/>     <!-- LABEL -->
+                <ColumnDefinition Width="1*"/>     <!-- COUNT -->
+                <ColumnDefinition Width="3.5*"/>     <!-- DISPLAY TYPE -->
+            </Grid.ColumnDefinitions>
+
+            <!-- REMOVE CHECKBOX-->
+            <StackPanel Grid.Column="0">
+                <TextBlock>Remove?</TextBlock>
+                <CheckBox Name="MyRemoveCheckBox"/>
+            </StackPanel>
+
+            <!-- POSITION TEXTBOX-->
+            <StackPanel Grid.Column="1">
+                <TextBlock>Position:</TextBlock>
+                <TextBlock Name="MyPositionText"/>
+            </StackPanel>
+
+            <!-- IMAGE FILE NAME -->
+            <Grid Grid.Column="2" Padding="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0">
+                    <TextBlock>Image File Name:</TextBlock>
+                </StackPanel>
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox Grid.Column="0" Name="MyImageFileNameText"></TextBox>
+                </Grid>
+            </Grid>
+
+            <!-- LABEL TEXTBOX-->
+            <Grid Grid.Column="3" Padding="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0">Label:</TextBlock>
+                <TextBox Grid.Row="1" Name="MyLabelText"/>
+            </Grid>
+
+            <!-- COUNT TEXTBOX-->
+            <Grid Grid.Column="4" Padding="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0">Count:</TextBlock>
+                <TextBox Grid.Row="1" Name="MyCountText"/>
+            </Grid>
+
+            <!-- DISPLAY TYPE -->
+            <Grid Grid.Column="5">
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0">Display Type:</TextBlock>
+                
+                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Padding="10">
+                    <RadioButton Name="MyTraceButton" IsChecked="True">Trace</RadioButton>
+                    <RadioButton Name="MyReferenceButton">Reference</RadioButton>
+                    <RadioButton Name="MyMemoryButton">Memory</RadioButton>
+                </StackPanel>
+            </Grid>
+            
+            
+    
+        </Grid>
+    </Border>
+        
+</UserControl>
