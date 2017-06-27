@@ -4,8 +4,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Xml;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using Windows.UI.Popups;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -31,15 +35,150 @@ namespace DataCollectionSetup
             ApplicationView.PreferredLaunchWindowingMode = ApplicationViewWindowingMode.FullScreen;
         }
 
-        private void OpenFileButton_Click(object sender, RoutedEventArgs e)
+        #region Command Bar Buttons (Open, Save)
+
+        private void OpenButton_Click(object sender, RoutedEventArgs e)
         {
 
         }
 
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            ;
+            // get the title and randomization
+            string title = MyTitleText.Text;
+            bool isRandom = MyRandomizeToggle.IsOn;
+
+            // validate title
+            if (title.Equals(""))
+            {
+                var dialog = new MessageDialog("ERROR: You are missing the title.");
+                await dialog.ShowAsync();
+                return;
+            }
+
+            // get the prompts
+            var promptElements = MyPromptElementsStack.Children;
+
+            // validate the prompt size
+            if (promptElements.Count == 0)
+            {
+                var dialog = new MessageDialog("ERROR: You have no prompts.");
+                await dialog.ShowAsync();
+                return;
+            }
+
+            // iterate through each prompt
+            var promptElementDataList = new List<Tuple<string, string, int, string>>();
+            for (int i = 0; i < promptElements.Count; ++i)
+            {
+                // get the current prompt
+                PromptElement promptElement = (PromptElement)promptElements[i];
+
+                // get the prompt's contents
+                string imageFileName = promptElement.ImageFileName;
+                string labelName = promptElement.LabelName;
+                string iterationsText = promptElement.IterationsText;
+                string displayType = promptElement.IsDisplayTrace ? "trace" : promptElement.IsDisplayReference ? "reference" : "none";
+
+                // validate the prompt's contents
+                bool isValid = true;
+                string errorMessage = "";
+                int iterations = 1;
+                if (imageFileName.Equals("") && !displayType.Equals("none"))
+                {
+                    isValid = false;
+                    errorMessage = "ERROR: One of your prompts is missing an image file name.";
+                }
+                else if (labelName.Equals(""))
+                {
+                    isValid = false;
+                    errorMessage = "ERROR: One of your prompts is missing a label name.";
+                }
+                else if (!int.TryParse(iterationsText, out iterations))
+                {
+                    isValid = false;
+                    errorMessage = "ERROR: One of your prompts uses a non-number for iterations.";
+                }
+                else if (iterations <= 0)
+                {
+                    isValid = false;
+                    errorMessage = "ERROR: One of your prompts uses a non-positive number for iterations.";
+                }
+                if (!isValid)
+                {
+                    var dialog = new MessageDialog(errorMessage);
+                    await dialog.ShowAsync();
+                    return;
+                }
+
+                // get the prompt element's data
+                var promptElementData = new Tuple<string, string, int, string>(imageFileName, labelName, iterations, displayType);
+                promptElementDataList.Add(promptElementData);
+            }
+
+            // get save file
+            FileSavePicker savePicker = new FileSavePicker();
+            savePicker.FileTypeChoices.Add("eXtensible Markup Language (XML) file", new List<string>() { ".xml" });
+            savePicker.SuggestedFileName = "New Document";
+            StorageFile file = await savePicker.PickSaveFileAsync();
+            if (file == null) { return; }
+
+            // write to XML file
+            WriteToXml(file, title, isRandom, promptElementDataList);
+
+            // show success message dialog
+            var successDialog = new MessageDialog("File saved successfully.");
+            await successDialog.ShowAsync();
         }
+
+        #endregion
+
+        private async void WriteToXml(StorageFile file, string title, bool isRandom, List<Tuple<string, string, int, string>> prompts)
+        {
+            // create the string writer as the streaming source of the XML data
+            string output = "";
+            using (StringWriter stringWriter = new StringWriter())
+            {
+                // set the string writer as the streaming source for the XML writer
+                using (XmlWriter xmlWriter = XmlWriter.Create(stringWriter))
+                {
+                    // <xml>
+                    xmlWriter.WriteStartDocument();
+
+                    // <DataCollection>
+                    xmlWriter.WriteStartElement("DataCollection");
+                    xmlWriter.WriteAttributeString("title", title);
+                    xmlWriter.WriteAttributeString("Random", "" + isRandom);
+
+                    // iterate through each stroke
+                    foreach (var prompt in prompts)
+                    {
+                        // <Prompt>
+                        xmlWriter.WriteStartElement("Prompt");
+
+                        xmlWriter.WriteAttributeString("image", prompt.Item1);
+                        xmlWriter.WriteAttributeString("label", prompt.Item2);
+                        xmlWriter.WriteAttributeString("iterations", "" + prompt.Item3);
+                        xmlWriter.WriteAttributeString("display", prompt.Item4);
+
+                        // </Prompt>
+                        xmlWriter.WriteEndElement();
+                    }
+
+                    // </DataCollection>
+                    xmlWriter.WriteEndElement();
+
+                    // </xml>
+                    xmlWriter.WriteEndDocument();
+                }
+
+                output = stringWriter.ToString();
+            }
+
+            await FileIO.WriteTextAsync(file, output);
+        }
+
+        #region Modifying Buttons (Add, Remove, Insert)
 
         private void AddPromptElementsButton_Click(object sender, RoutedEventArgs e)
         {
@@ -126,6 +265,8 @@ namespace DataCollectionSetup
 
             this.InsertIndexText.Text = "";
         }
+
+        #endregion
 
         private int MyCounter { get; set; }
     }
