@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using System.Xml;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
@@ -28,6 +29,9 @@ namespace DataCollectionSetup
     /// </summary>
     public sealed partial class MainPage : Page
     {
+
+        #region Constructor
+
         public MainPage()
         {
             this.InitializeComponent();
@@ -35,11 +39,35 @@ namespace DataCollectionSetup
             ApplicationView.PreferredLaunchWindowingMode = ApplicationViewWindowingMode.FullScreen;
         }
 
+        #endregion
+
         #region Command Bar Buttons (Open, Save)
 
-        private void OpenButton_Click(object sender, RoutedEventArgs e)
+        private void ClearButton_Click(object sender, RoutedEventArgs e)
         {
+            // clear session if user confirms
+            var title = "Please confirm...";
+            var content = "Are you sure that you want to clear your sessions?";
+            ClearSession(title, content);
+        }
 
+        private async void OpenButton_Click(object sender, RoutedEventArgs e)
+        {
+            // clear session if user confirms
+            var title = "Please confirm...";
+            var content = "Do you want to load new file without saving? Loading new file will clear your entire current session.";
+            Task task = ClearSession(title, content);
+            await task;
+
+            // get the file
+            var picker = new FileOpenPicker();
+            picker.ViewMode = PickerViewMode.List;
+            picker.FileTypeFilter.Add(".xml");
+            StorageFile file = await picker.PickSingleFileAsync();
+            if (file == null){ return; }
+
+            // load XML file to session
+            ReadFromXml(file);
         }
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -127,11 +155,131 @@ namespace DataCollectionSetup
             WriteToXml(file, title, isRandom, promptElementDataList);
 
             // show success message dialog
-            var successDialog = new MessageDialog("File saved successfully.");
+            var successDialog = new MessageDialog("File saved successfully.", "Success");
             await successDialog.ShowAsync();
         }
 
         #endregion
+
+        #region Modifying Buttons (Add, Remove, Insert)
+
+        private void AddPromptElementsButton_Click(object sender, RoutedEventArgs e)
+        {
+            PromptElement currentPromptElement = new PromptElement(MyPromptElementsStack.Children.Count, MyCounter);
+            currentPromptElement.Name = "myPromptElement" + MyCounter;
+            MyCounter++;
+
+            MyPromptElementsStack.Children.Add(currentPromptElement);
+        }
+
+        private void RemovePromptElementsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var promptElementsToDelete = new List<PromptElement>();
+            foreach (PromptElement promptElement in MyPromptElementsStack.Children)
+            {
+                if (promptElement.IsChecked)
+                {
+                    promptElementsToDelete.Add(promptElement);
+                }
+            }
+
+            if (promptElementsToDelete.Count == 0) { return; }
+
+            foreach (var promptElementToDelate in promptElementsToDelete)
+            {
+                MyPromptElementsStack.Children.Remove(promptElementToDelate);
+            }
+
+            for (int i = 0; i < MyPromptElementsStack.Children.Count; ++i)
+            {
+                var promptElement = (PromptElement)(MyPromptElementsStack.Children[i]);
+                promptElement.PositionName = "" + i;
+            }
+        }
+
+        private void InsertPromptElementsButton_Click(object sender, RoutedEventArgs e)
+        {
+            // check if the value is valid
+            string value = MyInsertIndexText.Text;
+            int index;
+            if (!int.TryParse(value, out index)) {
+                MyInsertIndexText.Text = ""; // clear the text box
+                return; // do nothing
+            }
+
+            //
+            int count = MyPromptElementsStack.Children.Count;
+
+            // case: stack is empty
+            if (count == 0)
+            {
+                PromptElement currentPromptElement = new PromptElement(0, MyCounter);
+                currentPromptElement.Name = "myPromptElement" + MyCounter;
+                MyCounter++;
+
+                MyPromptElementsStack.Children.Add(currentPromptElement);
+            }
+
+            // case: index exceeds stack size
+            else if (index >= count)
+            {
+                PromptElement currentPromptElement = new PromptElement(count, MyCounter);
+                currentPromptElement.Name = "myPromptElement" + MyCounter;
+                MyCounter++;
+
+                MyPromptElementsStack.Children.Add(currentPromptElement);
+            }
+
+            //
+            else
+            {
+                PromptElement currentPromptElement = new PromptElement(index, MyCounter);
+                currentPromptElement.Name = "myPromptElement" + MyCounter;
+                MyCounter++;
+
+                //
+                MyPromptElementsStack.Children.Insert(index, currentPromptElement);
+                for (int i = index + 1; i < MyPromptElementsStack.Children.Count; ++i)
+                {
+                    var promptElement = (PromptElement)MyPromptElementsStack.Children[i];
+                    promptElement.PositionName = "" + i;
+                }
+            }
+
+            this.MyInsertIndexText.Text = "";
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        private async Task ClearSession(string title, string content)
+        {
+            // show warning dialog
+            MessageDialog dialog = new MessageDialog(content, title);
+            dialog.Commands.Add(new UICommand("Yes") { Id = 0 });
+            dialog.Commands.Add(new UICommand("No") { Id = 1 });
+            dialog.DefaultCommandIndex = 0;
+            dialog.CancelCommandIndex = 1;
+            var result = await dialog.ShowAsync();
+            if ((int)result.Id == 0) {; }
+            else { return; }
+
+            // clear session
+            MyCounter = 0;
+            MyTitleText.Text = "";
+            MyPromptElementsStack.Children.Clear();
+            MyRandomizeToggle.IsOn = false;
+            MyInsertIndexText.Text = "";
+        }
+
+        private void ReadFromXml(StorageFile file)
+        {
+            using (XmlReader reader = XmlReader.Create(file.Path))
+            {
+                reader.ReadAsync();
+            }
+        }
 
         private async void WriteToXml(StorageFile file, string title, bool isRandom, List<Tuple<string, string, int, string>> prompts)
         {
@@ -178,96 +326,12 @@ namespace DataCollectionSetup
             await FileIO.WriteTextAsync(file, output);
         }
 
-        #region Modifying Buttons (Add, Remove, Insert)
-
-        private void AddPromptElementsButton_Click(object sender, RoutedEventArgs e)
-        {
-            PromptElement currentPromptElement = new PromptElement(MyPromptElementsStack.Children.Count, MyCounter);
-            currentPromptElement.Name = "myPromptElement" + MyCounter;
-            MyCounter++;
-
-            MyPromptElementsStack.Children.Add(currentPromptElement);
-        }
-
-        private void RemovePromptElementsButton_Click(object sender, RoutedEventArgs e)
-        {
-            var promptElementsToDelete = new List<PromptElement>();
-            foreach (PromptElement promptElement in MyPromptElementsStack.Children)
-            {
-                if (promptElement.IsChecked)
-                {
-                    promptElementsToDelete.Add(promptElement);
-                }
-            }
-
-            if (promptElementsToDelete.Count == 0) { return; }
-
-            foreach (var promptElementToDelate in promptElementsToDelete)
-            {
-                MyPromptElementsStack.Children.Remove(promptElementToDelate);
-            }
-
-            for (int i = 0; i < MyPromptElementsStack.Children.Count; ++i)
-            {
-                var promptElement = (PromptElement)(MyPromptElementsStack.Children[i]);
-                promptElement.PositionName = "" + i;
-            }
-        }
-
-        private void InsertPromptElementsButton_Click(object sender, RoutedEventArgs e)
-        {
-            // check if the value is valid
-            string value = InsertIndexText.Text;
-            int index;
-            if (!int.TryParse(value, out index)) {
-                InsertIndexText.Text = ""; // clear the text box
-                return; // do nothing
-            }
-
-            //
-            int count = MyPromptElementsStack.Children.Count;
-
-            // case: stack is empty
-            if (count == 0)
-            {
-                PromptElement currentPromptElement = new PromptElement(0, MyCounter);
-                currentPromptElement.Name = "myPromptElement" + MyCounter;
-                MyCounter++;
-
-                MyPromptElementsStack.Children.Add(currentPromptElement);
-            }
-
-            // case: index exceeds stack size
-            else if (index >= count)
-            {
-                PromptElement currentPromptElement = new PromptElement(count, MyCounter);
-                currentPromptElement.Name = "myPromptElement" + MyCounter;
-                MyCounter++;
-
-                MyPromptElementsStack.Children.Add(currentPromptElement);
-            }
-
-            //
-            else
-            {
-                PromptElement currentPromptElement = new PromptElement(index, MyCounter);
-                currentPromptElement.Name = "myPromptElement" + MyCounter;
-                MyCounter++;
-
-                //
-                MyPromptElementsStack.Children.Insert(index, currentPromptElement);
-                for (int i = index + 1; i < MyPromptElementsStack.Children.Count; ++i)
-                {
-                    var promptElement = (PromptElement)MyPromptElementsStack.Children[i];
-                    promptElement.PositionName = "" + i;
-                }
-            }
-
-            this.InsertIndexText.Text = "";
-        }
-
         #endregion
 
+        #region Fields
+
         private int MyCounter { get; set; }
+
+        #endregion
     }
 }

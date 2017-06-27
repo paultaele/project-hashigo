@@ -24,8 +24,9 @@
 
         <!-- COMMAND BAR -->
         <CommandBar Grid.Row="0">
-            <AppBarButton Icon="OpenFile" Label="Open" Click="OpenButton_Click"/>
-            <AppBarButton Icon="Save" Label="Save" Click="SaveButton_Click"/>
+            <AppBarButton Icon="Clear" Name="ClearButton" Label="Clear" Click="ClearButton_Click"/>
+            <AppBarButton Icon="OpenFile" Name="OpenButton" Label="Open" Click="OpenButton_Click"/>
+            <AppBarButton Icon="Save" Name="SaveButton"  Label="Save" Click="SaveButton_Click"/>
         </CommandBar>
 
         <!-- TITLE RANDOMIZE PATH -->
@@ -62,7 +63,7 @@
             <Button Name="RemovePromptElementsButton" Margin="10 0 10 0" Click="RemovePromptElementsButton_Click">Remove</Button>
             <Button Name="InsertPromptElementsButton" Margin="10 0 0 0" Click="InsertPromptElementsButton_Click">Insert</Button>
             <TextBlock>@</TextBlock>
-            <TextBox Name="InsertIndexText"></TextBox>
+            <TextBox Name="MyInsertIndexText"></TextBox>
         </StackPanel>
 
     </Grid>
